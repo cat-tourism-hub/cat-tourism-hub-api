@@ -3,13 +3,13 @@ import os
 import pyrebase
 
 config = {
-    'apiKey': os.environ.get('PYREBASE_CONF')['APIKEY'],
-    'authDomain': os.environ.get('PYREBASE_CONF')['AUTHDOMAIN'],
-    'projectId': os.environ.get('PYREBASE_CONF')['PROJECTID'],
-    'storageBucket': os.environ.get('PYREBASE_CONF')['STORAGEBUCKET'],
-    'messagingSenderId': os.environ.get('PYREBASE_CONF')['MESSAGINGSENDERID'],
-    'appId': os.environ.get('PYREBASE_CONF')['APPID'],
-    'measurementId': os.environ.get('PYREBASE_CONF')['MEASUREMENTID'],
+    'apiKey': os.environ.get('APIKEY'),
+    'authDomain': os.environ.get('AUTHDOMAIN'),
+    'projectId': os.environ.get('PROJECTID'),
+    'storageBucket': os.environ.get('STORAGEBUCKET'),
+    'messagingSenderId': os.environ.get('MESSAGINGSENDERID'),
+    'appId': os.environ.get('APPID'),
+    'measurementId': os.environ.get('MEASUREMENTID'),
     'databaseURL': '',
 }
 
