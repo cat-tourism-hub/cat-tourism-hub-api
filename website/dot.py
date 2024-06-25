@@ -3,7 +3,6 @@ from .serializer import *
 from pyrebase_conf import *
 from firebase_conf import admin_firestore as db
 from .models import *
-from .auth import authenticate_user
 from .db_query import *
 from .strings import *
 from flask_mail import Message

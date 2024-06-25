@@ -2,7 +2,6 @@ import base64
 from flask import Blueprint, session, render_template, redirect, url_for, request, jsonify, flash
 from .serializer import serialize_data
 from pyrebase_conf import *
-from .auth import *
 from .db_query import *
 from .strings import *
 from firebase_conf import admin_firestore as db
@@ -18,41 +17,41 @@ def business_index():
     return redirect(url_for('business.login'))
 
 
-@business.route('/login', methods=['GET', 'POST'])
-def login():
-    session.pop('email', None)
-    session.pop('username', None)
-    if request.method == POST:
-        # login the user
-        result = authenticate_user(request)
+# @business.route('/login', methods=['GET', 'POST'])
+# def login():
+#     session.pop('email', None)
+#     session.pop('username', None)
+#     if request.method == POST:
+#         # login the user
+#         result = authenticate_user(request)
 
-        if result == SUCCESS:
-            # extract business details
-            business_details = get_establishment_details(
-                session.get('user_uid'))
-            if business_details:
+#         if result == SUCCESS:
+#             # extract business details
+#             business_details = get_establishment_details(
+#                 session.get('user_uid'))
+#             if business_details:
 
-                session['b_info'] = {
-                    'estb_id': business_details['establishment'].get('estb_id', ''),
-                    'b_name': business_details['establishment'].get('name', ''),
-                    'b_type': business_details['establishment'].get('type', ''),
-                    'status': business_details['establishment'].get('stats', ''),
-                    'contact': business_details.get('contact', {}),
-                    'location': business_details.get('location', {}),
-                    'legals': business_details.get('legals', {})
-                }
-                session['logo'] = bucket.child(
-                    session.get('user_uid')+'/logo.png').get_url(session['idToken'])
+#                 session['b_info'] = {
+#                     'estb_id': business_details['establishment'].get('estb_id', ''),
+#                     'b_name': business_details['establishment'].get('name', ''),
+#                     'b_type': business_details['establishment'].get('type', ''),
+#                     'status': business_details['establishment'].get('stats', ''),
+#                     'contact': business_details.get('contact', {}),
+#                     'location': business_details.get('location', {}),
+#                     'legals': business_details.get('legals', {})
+#                 }
+#                 session['logo'] = bucket.child(
+#                     session.get('user_uid')+'/logo.png').get_url(session['idToken'])
 
-            return redirect(url_for('business.dashboard'))
-        elif result == INVALID_CREDENTIALS:
-            return render_template('b-login.html', error='Invalid email or password.')
-        else:
-            return render_template('b-login.html', error=result)
-    if EMAIL in session:
-        return redirect(url_for('business.dashboard'))
+#             return redirect(url_for('business.dashboard'))
+#         elif result == INVALID_CREDENTIALS:
+#             return render_template('b-login.html', error='Invalid email or password.')
+#         else:
+#             return render_template('b-login.html', error=result)
+#     if EMAIL in session:
+#         return redirect(url_for('business.dashboard'))
 
-    return render_template('b-login.html')
+#     return render_template('b-login.html')
 
 
 def decode_base64(data):
