@@ -1,13 +1,15 @@
+import json
+import os
 import pyrebase
 
 config = {
-    'apiKey': 'AIzaSyCsNbjkt1WVCBy2p86w0gSDmMjyckMSr28',
-    'authDomain': 'tourism-hub.firebaseapp.com',
-    'projectId': 'tourism-hub',
-    'storageBucket': 'tourism-hub.appspot.com',
-    'messagingSenderId': '70758533530',
-    'appId': '1:70758533530:web:be9b0e8b03602015c05223',
-    'measurementId': 'G-D4R4Y6DCXW',
+    'apiKey': os.environ.get('PYREBASE_CONF')['APIKEY'],
+    'authDomain': os.environ.get('PYREBASE_CONF')['AUTHDOMAIN'],
+    'projectId': os.environ.get('PYREBASE_CONF')['PROJECTID'],
+    'storageBucket': os.environ.get('PYREBASE_CONF')['STORAGEBUCKET'],
+    'messagingSenderId': os.environ.get('PYREBASE_CONF')['MESSAGINGSENDERID'],
+    'appId': os.environ.get('PYREBASE_CONF')['APPID'],
+    'measurementId': os.environ.get('PYREBASE_CONF')['MEASUREMENTID'],
     'databaseURL': '',
 }
 
