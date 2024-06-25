@@ -1,0 +1,11 @@
+pyrebase4
+Flask
+firebase-admin
+flask-login
+Pillow
+Gunicorn
+Flask-MySQLdb
+mysql-connector-python
+pyshorteners
+Flask-Mail
+flask-cors
