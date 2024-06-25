@@ -1,4 +1,3 @@
 venv
-firebase_conf.py
-pyrebase_conf.py
+config.txt
 tourism-hub.json
