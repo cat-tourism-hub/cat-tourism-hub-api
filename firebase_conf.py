@@ -5,11 +5,15 @@ from firebase_admin import credentials, firestore
 from google.cloud import storage
 
 
+def format_private_key(value):
+    return value.replace('\n', '\n')
+
+
 service_account_info = {
-    "type": os.environ.get('TYPE'),
+    "type": 'service_account',
     "project_id": os.environ.get('PROJECT_ID'),
     "private_key_id": os.environ.get('PROJECT_KEY_ID'),
-    "private_key": os.environ.get('PRIVATE_KEY'),
+    "private_key": format_private_key(os.environ.get('PRIVATE_KEY')),
     "client_email": os.environ.get('CLIENT_EMAIL'),
     "client_id": os.environ.get('CLIENT_ID'),
     "auth_uri": os.environ.get('AUTH_URI'),
