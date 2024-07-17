@@ -267,7 +267,7 @@ def add_product(partnerId):
                 file = decode_base64(photo['webImage'])
                 photo_data.update({photo['title']: file})
             else:
-                photo_data.update({photo['title']: photo['path']})
+                photo_data.update({photo['title']: str[photo['path']]})
 
         # Upload images to Firebase and store URLs
         photo_urls = []
