@@ -5,7 +5,7 @@ from firebase_conf import admin_firestore as db
 from .models import *
 from .db_query import *
 from .strings import *
-from flask_mail import Message
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 dot = Blueprint('dot', __name__, static_folder='static',
                 template_folder='templates/dot')
@@ -52,17 +52,18 @@ def active_est():
     return redirect(url_for('dot.dot_login'))
 
 
-@dot.route('/applicants', methods=['POST', 'GET'])
+@dot.route('/applicants', methods=['GET'])
 def applicants():
-    applicants = []
-    if EMAIL in session:
-        data = get_all_business()
-        applicants = []
-        for establishment in data:
-            if establishment['status'] == PENDING:
-                applicants.append(Establishment(
-                    establishment.get('id'), establishment.get(
-                        'name', ''), establishment.get('about', ''), establishment.get('type', ''), establishment.get('status', '')))
+    auth = request.headers.get('Authorization')
+    if auth:
+        try:
+            partners_ref = db.collection(
+                PARTNERS).where(filter=FieldFilter("estb.status", "==", "Pending"))
+            partners = partners_ref.stream()
+            partners_list = [partner.to_dict() for partner in partners]
+            return partners_list
 
-        return render_template('applicant.html', applicants=applicants)
-    return redirect(url_for('dot.dot_login'))
+        except Exception as e:
+            return jsonify({'error': str(e)})
+    else:
+        return jsonify({'error': 'Authorization header missing'}), 401

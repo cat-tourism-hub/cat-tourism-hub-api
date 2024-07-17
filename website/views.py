@@ -1,30 +1,21 @@
 import os
 from flask import Blueprint, redirect, jsonify
-from website.db_query import get_all_business
+from firebase_conf import admin_firestore as db
 from .strings import *
+from google.cloud.firestore_v1.base_query import FieldFilter
 
-views = Blueprint('views', __name__,
-                  static_folder='website/frontend/build', template_folder='templates')
+views = Blueprint('views', __name__)
 
 
 @views.route('/')
 def index():
-    docs = get_all_business()
-    if docs:
-        return docs
-    return
+    try:
+        partners_ref = db.collection(
+            PARTNERS).where(filter=FieldFilter("estb.status", "==", "Pending"))
+        partners = partners_ref.get()
+        partners_list = [partner.to_dict() for partner in partners]
 
+        return partners_list
 
-@views.route('/accommodation')
-def accommodation():
-    return redirect('/')
-
-
-@views.route('/restaurant')
-def restaurant():
-    return redirect('/')
-
-
-@views.route('/car-rental')
-def car_rental():
-    return redirect('/')
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
