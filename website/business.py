@@ -64,7 +64,7 @@ def decode_base64(data):
     return None
 
 
-@business.route('/establishment/<user_uid>')
+@business.route('/establishment/<user_uid>', methods=['GET'])
 def get_establishment_details(user_uid):
     try:
         partner_ref = db.collection(PARTNERS).document(user_uid)
