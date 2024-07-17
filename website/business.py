@@ -263,8 +263,10 @@ def add_product(partnerId):
 
         photo_data = {}
         for photo in photos:
-            file = decode_base64(photo['webImage'])
-            photo_data.update({photo['title']: file})
+            if photo['webImage']:
+                file = decode_base64(photo['webImage'])
+                photo_data.update({photo['title']: file})
+            photo_data.update({photo['title']: photo['path']})
 
         # Upload images to Firebase and store URLs
         photo_urls = []
@@ -287,6 +289,7 @@ def add_product(partnerId):
             'partnerId': partnerId,
             'name': data['name'],
             'price': data['price'],
+            'category': data['category'],
             'desc': data['desc'],
             'pricePer': data['pricePer'],
             'included': data['included'],
