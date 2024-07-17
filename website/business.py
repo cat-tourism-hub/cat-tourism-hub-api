@@ -195,7 +195,7 @@ def update_amenities_facilities(uid):
 
             if image_subfields:
                 for photo in image_subfields:
-                    file = decode_base64(photo['webImage'])
+                    file = decode_base64(photo['image'])
                     photo_data.update({photo['title']: file})
 
                 for title, image in photo_data.items():
@@ -263,11 +263,8 @@ def add_product(partnerId):
 
         photo_data = {}
         for photo in photos:
-            if photo['webImage']:
-                file = decode_base64(photo['webImage'])
-                photo_data.update({photo['title']: file})
-            else:
-                photo_data.update({photo['title']: str[photo['path']]})
+            file = decode_base64(photo['image'])
+            photo_data.update({photo['title']: file})
 
         # Upload images to Firebase and store URLs
         photo_urls = []
