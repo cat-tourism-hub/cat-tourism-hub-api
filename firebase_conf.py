@@ -5,7 +5,11 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud import storage
 
-cred = credentials.Certificate('./tourism-hub.json')
+# Use /etc/secrets/<filename> on server
+# Use ./tourism-hub.json on local
+
+cred = credentials.Certificate('/etc/secrets/fb_key')
 firebase_admin.initialize_app(cred)
 admin_firestore = firestore.client()
-storage_client = storage.Client.from_service_account_json('./tourism-hub.json')
+storage_client = storage.Client.from_service_account_json(
+    '/etc/secrets/fb_key')
