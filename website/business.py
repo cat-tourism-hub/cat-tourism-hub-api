@@ -85,7 +85,7 @@ def update_establishment_details(uid):
     if uid:
         try:
             db.collection(PARTNERS).document(uid).update(data)
-            return jsonify({'Success': 'Changes has been saved.'}), 200
+            return jsonify({'Success': 'Changes has been saved.'}), 201
         except Exception as e:
             return jsonify({'Error': str(e)}), 500
     return jsonify({'Error': 'Invalid Partner ID'}), 500
@@ -227,7 +227,7 @@ def update_amenities_facilities(uid):
             'facilities_amenities': facilities_amenities
         })
 
-        return jsonify({'message': 'Data stored successfully in Firestore'}), 200
+        return jsonify({'message': 'Data stored successfully in Firestore'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
