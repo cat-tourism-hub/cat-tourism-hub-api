@@ -59,14 +59,11 @@ def register():
                 email_verified=False,
                 password=password,
             )
-            print(result.uid)
             user_uid = result.uid
 
         except auth.EmailAlreadyExistsError:
             return jsonify({'Error': 'Email already exists.'}), 400
         except Exception as e:
-            print(e)
-            # Handle other potential exceptions
             return jsonify({'Error': str(e)}), 500
 
         try:
@@ -114,7 +111,6 @@ def register():
             })
 
         except Exception as e:
-            print(e)
             return jsonify({'Error': 'Database insertion failed'}), 500
 
         try:
@@ -123,7 +119,6 @@ def register():
                 'role': 'Business Account'
             })
         except Exception as e:
-            print(e)
             return jsonify({'Error': 'User info insertion failed', 'details': str(e)}), 500
 
         return jsonify({'message': 'Data inserted successfully!'}), 201
@@ -213,7 +208,6 @@ def update_amenities_facilities(uid):
 
         return jsonify({'message': 'Data stored successfully in Firestore'}), 201
     except Exception as e:
-        print(e)
         return jsonify({'Error': 'Please refresh the page and try again.'}), 500
 
 
@@ -236,7 +230,12 @@ def fetch_products(uid):
             services_ref = db.collection(
                 PARTNERS).document(uid).collection(SERVICES)
             services = services_ref.get()
-            service_list = [service.to_dict() for service in services]
+            service_list = []
+            for service in services:
+                service_data = service.to_dict()
+                service_data['id'] = service.id
+                service_list.append(service_data)
+
             return jsonify(service_list), 200
 
         except Exception as e:
@@ -245,11 +244,10 @@ def fetch_products(uid):
         return jsonify({'error': 'Authorization header missing'}), 401
 
 
-@business.route('<partnerId>/services/add', methods=['POST'])
-def add_product(partnerId):
+@business.route('<partnerId>/services/edit/<itemId>', methods=['POST'])
+def edit_product(partnerId, itemId):
     token = request.headers.get('Authorization')
     data = request.json
-
     if not partnerId:
         return jsonify({'Error': 'Partner\'s ID is missing'}), 401
 
@@ -289,6 +287,70 @@ def add_product(partnerId):
 
     try:
         # Insert into Firestore under the new subcollection
+        db.collection(PARTNERS).document(partnerId).collection(SERVICES).document(itemId).update({
+            'name': data['name'],
+            'price': data['price'],
+            'category': data['category'],
+            'desc': data['desc'],
+            'pricePer': data['pricePer'],
+            'included': data['included'],
+            'availabilityStatus': True,
+            'updatedOn': datetime.now(),
+            'photos': photo_urls,
+            'otherServices': data['otherServices']
+        })
+        return jsonify({'success': 'Product added successfully'}), 201
+
+    except Exception as e:
+        print(e)
+        return jsonify({'error': str(e)}), 500
+
+
+@business.route('<partnerId>/services/add', methods=['POST'])
+def add_product(partnerId):
+    token = request.headers.get('Authorization')
+    data = request.json
+    print(data['photos'])
+    if not partnerId:
+        return jsonify({'Error': 'Partner\'s ID is missing'}), 401
+
+    try:
+        decoded_token = auth.verify_id_token(token)
+        user_uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({'Error': 'Token verification failed'}), 401
+
+    # Check if the authenticated user's UID matches the UID in the request
+    if partnerId != user_uid:
+        return jsonify({'Error': 'Unauthorized'}), 401
+
+    try:
+        # Handle file uploads
+        photos = data.get('photos', [])
+
+        photo_data = {}
+        for photo in photos:
+            file = decode_base64(photo['image'])
+            photo_data.update({photo['title']: file})
+            print(photo_data)
+
+        # Upload images to Firebase and store URLs
+        photo_urls = []
+        for title, image in photo_data.items():
+            abs_path = f'{partnerId}/services/{title}'
+            result = upload_image_to_firebase(
+                path=abs_path, image=image)
+            if result and not isinstance(result, dict):
+                photo_urls.append(abs_path)
+            elif isinstance(result, dict) and 'error' in result:
+                # Return error if upload_image_to_firebase failed
+                return jsonify(result), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    try:
+        # Insert into Firestore under the new subcollection
         db.collection(PARTNERS).document(partnerId).collection(SERVICES).add({
             'partnerId': partnerId,
             'name': data['name'],
@@ -298,8 +360,7 @@ def add_product(partnerId):
             'pricePer': data['pricePer'],
             'included': data['included'],
             'availabilityStatus': True,
-            'createdAt': datetime.now(),
-            'updatedAt': datetime.now(),
+            'createdOn': datetime.now(),
             'photos': photo_urls,
             'otherServices': data['otherServices']
         })
