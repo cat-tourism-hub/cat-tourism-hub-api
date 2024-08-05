@@ -1,61 +1,18 @@
 import base64
-from io import BytesIO
-from flask import Blueprint, session, render_template, redirect, url_for, request, jsonify, flash
-import requests
+from flask import Blueprint, request, jsonify
+import json
+import re
+from website.jsonify_decoder import decode_jsonify
 from .serializer import serialize_data
 from pyrebase_conf import *
-from .db_query import *
+from .image_upload import *
 from .strings import *
 from firebase_conf import admin_firestore as db
-from google.cloud.firestore_v1.base_query import FieldFilter
 from datetime import datetime
 from google.api_core.exceptions import DeadlineExceeded
+from firebase_admin import auth
 
 business = Blueprint('business', __name__)
-
-
-@business.route('/')
-def business_index():
-    if EMAIL in session:
-        return redirect(url_for('business.dashboard'))
-    return redirect(url_for('business.login'))
-
-
-# @business.route('/login', methods=['GET', 'POST'])
-# def login():
-#     session.pop('email', None)
-#     session.pop('username', None)
-#     if request.method == POST:
-#         # login the user
-#         result = authenticate_user(request)
-
-#         if result == SUCCESS:
-#             # extract business details
-#             business_details = get_establishment_details(
-#                 session.get('user_uid'))
-#             if business_details:
-
-#                 session['b_info'] = {
-#                     'estb_id': business_details['establishment'].get('estb_id', ''),
-#                     'b_name': business_details['establishment'].get('name', ''),
-#                     'b_type': business_details['establishment'].get('type', ''),
-#                     'status': business_details['establishment'].get('stats', ''),
-#                     'contact': business_details.get('contact', {}),
-#                     'location': business_details.get('location', {}),
-#                     'legals': business_details.get('legals', {})
-#                 }
-#                 session['logo'] = bucket.child(
-#                     session.get('user_uid')+'/logo.png').get_url(session['idToken'])
-
-#             return redirect(url_for('business.dashboard'))
-#         elif result == INVALID_CREDENTIALS:
-#             return render_template('b-login.html', error='Invalid email or password.')
-#         else:
-#             return render_template('b-login.html', error=result)
-#     if EMAIL in session:
-#         return redirect(url_for('business.dashboard'))
-
-#     return render_template('b-login.html')
 
 
 def decode_base64(data):
@@ -79,18 +36,6 @@ def get_establishment_details(user_uid):
         return jsonify({"Error": str(e)}), 500
 
 
-@business.route('/establishment/update/<uid>', methods=['POST'])
-def update_establishment_details(uid):
-    data = request.get_json()
-    if uid:
-        try:
-            db.collection(PARTNERS).document(uid).update(data)
-            return jsonify({'Success': 'Changes has been saved.'}), 201
-        except Exception as e:
-            return jsonify({'Error': str(e)}), 500
-    return jsonify({'Error': 'Invalid Partner ID'}), 500
-
-
 @business.route('/register', methods=['POST'])
 def register():
     if request.method == POST:
@@ -109,12 +54,20 @@ def register():
             password = f'{contact_name}@{business_name}'
 
             # Create business account
-            result = user_auth.create_user_with_email_and_password(
-                email=email, password=password)
-            user_uid = result['localId']
-            token = result['idToken']
+            result = auth.create_user(
+                email=email,
+                email_verified=False,
+                password=password,
+            )
+            print(result.uid)
+            user_uid = result.uid
+
+        except auth.EmailAlreadyExistsError:
+            return jsonify({'Error': 'Email already exists.'}), 400
         except Exception as e:
-            return jsonify({'error': 'Account creation failed', 'details': str(e)}), 500
+            print(e)
+            # Handle other potential exceptions
+            return jsonify({'Error': str(e)}), 500
 
         try:
             # Parse files
@@ -136,13 +89,16 @@ def register():
             result = []
             for image_name, image in images.items():
                 abs_path = f'{user_uid}/{image_name}.png'
-                image_link = upload_image_to_firebase(
-                    path=abs_path, image=image, token=token)
-                if image_link:
-                    result.append(image_link)
+
+                upload_res = upload_image_to_firebase(
+                    path=abs_path, image=image)
+                response_data, status_code = decode_jsonify(upload_res)
+                # Check the status code
+                if status_code == 201:
+                    result.append(abs_path)
 
         except Exception as e:
-            return jsonify({'Error': 'Image upload failed', 'Details': str(e)}), 500
+            return jsonify({'Error': 'Image upload failed'}), 500
 
         try:
             # Insert partners details to firestore
@@ -158,8 +114,8 @@ def register():
             })
 
         except Exception as e:
-
-            return jsonify({'error': 'Database insertion failed', 'details': str(e)}), 500
+            print(e)
+            return jsonify({'Error': 'Database insertion failed'}), 500
 
         try:
             # Create account role for email in firestore
@@ -167,10 +123,22 @@ def register():
                 'role': 'Business Account'
             })
         except Exception as e:
-
-            return jsonify({'error': 'Database insertion failed', 'details': str(e)}), 500
+            print(e)
+            return jsonify({'Error': 'User info insertion failed', 'details': str(e)}), 500
 
         return jsonify({'message': 'Data inserted successfully!'}), 201
+
+
+@business.route('/establishment/update/<uid>', methods=['POST'])
+def update_establishment_details(uid):
+    data = request.get_json()
+    if uid:
+        try:
+            db.collection(PARTNERS).document(uid).update(data)
+            return jsonify({'Success': 'Changes has been saved.'}), 201
+        except Exception as e:
+            return jsonify({'Error': str(e)}), 500
+    return jsonify({'Error': 'Invalid Partner ID'}), 500
 
 
 @business.route('/update_amenities/<uid>', methods=['POST'])
@@ -178,58 +146,86 @@ def update_amenities_facilities(uid):
     token = request.headers.get('Authorization')
     data = request.json
 
+    if not token:
+        return jsonify({'error': 'Authorization header missing'}), 401
+
+    # Verify the ID token and get the user's UID
+    try:
+        decoded_token = auth.verify_id_token(token)
+        user_uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({'error': 'Token verification failed'}), 401
+
+    # Check if the authenticated user's UID matches the UID in the request
+    if user_uid != uid:
+        return jsonify({'error': 'Unauthorized'}), 401
+
     try:
         # Initialize facilities_amenities list
-        facilities_amenities = []
+        amenities = []
+        facilities = {}
 
         # Process the data and populate facilities_amenities
         for item in data:
             heading = item.get('heading')
-            icon_pack = item.get('icon', {}).get('pack')
-            icon_key = item.get('icon', {}).get('key')
-            subfields = item.get('subFields', [])
-            image_subfields = item.get('imageSubFields', [])
 
-            photo_links = []  # Reset photo_links for each item
+            if heading is not None:
+                icon_pack = item.get('icon', None).get('pack')
+                icon_key = item.get('icon', None).get('key')
+                subfields = item.get('subFields', None)
+
+                # Create each facility item
+                facility_item = {
+                    'heading': heading,
+                    'icon': {
+                        'pack': icon_pack,
+                        'key': icon_key
+                    },
+                    'subFields': subfields,
+                }
+                # Add the facility item to facilities_amenities list
+                amenities.append(facility_item)
+
+            # Get images from frontend
+            images = item.get('images', {})
             photo_data = {}  # Reset photo_data for each item
 
-            if image_subfields:
-                for photo in image_subfields:
-                    file = decode_base64(photo['image'])
-                    photo_data.update({photo['title']: file})
+            if images:
+                for img in images:
+                    file = decode_base64(img['image'])
+                    photo_data.update({img['title']: file})
 
                 for title, image in photo_data.items():
                     abs_path = f'{uid}/facilities/{title}'
                     result = upload_image_to_firebase(
-                        path=abs_path, image=image, token=token)
+                        path=abs_path, image=image)
                     if result and not isinstance(result, dict):
-                        photo_links.append(result)
+                        facilities.update({title: abs_path})
                     elif isinstance(result, dict) and 'error' in result:
                         # Return error if upload_image_to_firebase failed
                         return jsonify(result), 400
 
-            # Create each facility item
-            facility_item = {
-                'heading': heading,
-                'icon': {
-                    'pack': icon_pack,
-                    'key': icon_key
-                },
-                'subFields': subfields,
-                'imageSubFields': photo_links
-            }
-
-            # Add the facility item to facilities_amenities list
-            facilities_amenities.append(facility_item)
-
         # Update or set the facilities_amenities in Firebase
         db.collection(PARTNERS).document(uid).update({
-            'facilities_amenities': facilities_amenities
+            'amenities': amenities,
+            'facilities': facilities
         })
 
         return jsonify({'message': 'Data stored successfully in Firestore'}), 201
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        print(e)
+        return jsonify({'Error': 'Please refresh the page and try again.'}), 500
+
+
+@business.route('/policies/<uid>', methods=['POST'])
+def policies(uid):
+    if uid:
+        policy = request.json
+        try:
+            db.collection(PARTNERS).document(uid).update({'policies': policy})
+            return jsonify({'message': 'Policy is updated'}), 201
+        except:
+            return jsonify({'Error': 'Policy update fail.'}), 500
 
 
 @business.route('/services/<uid>', methods=['GET'])
@@ -255,7 +251,17 @@ def add_product(partnerId):
     data = request.json
 
     if not partnerId:
-        return jsonify({'error': "Partner's ID is missing"}), 400
+        return jsonify({'Error': 'Partner\'s ID is missing'}), 401
+
+    try:
+        decoded_token = auth.verify_id_token(token)
+        user_uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({'Error': 'Token verification failed'}), 401
+
+    # Check if the authenticated user's UID matches the UID in the request
+    if partnerId != user_uid:
+        return jsonify({'Error': 'Unauthorized'}), 401
 
     try:
         # Handle file uploads
@@ -271,9 +277,9 @@ def add_product(partnerId):
         for title, image in photo_data.items():
             abs_path = f'{partnerId}/services/{title}'
             result = upload_image_to_firebase(
-                path=abs_path, image=image, token=token)
+                path=abs_path, image=image)
             if result and not isinstance(result, dict):
-                photo_urls.append(result)
+                photo_urls.append(abs_path)
             elif isinstance(result, dict) and 'error' in result:
                 # Return error if upload_image_to_firebase failed
                 return jsonify(result), 400

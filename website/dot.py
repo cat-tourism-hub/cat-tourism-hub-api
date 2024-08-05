@@ -3,7 +3,7 @@ from .serializer import *
 from pyrebase_conf import *
 from firebase_conf import admin_firestore as db
 from .models import *
-from .db_query import *
+from .image_upload import *
 from .strings import *
 from google.cloud.firestore_v1.base_query import FieldFilter
 

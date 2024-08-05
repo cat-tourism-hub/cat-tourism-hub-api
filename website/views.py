@@ -20,4 +20,5 @@ def index():
     except DeadlineExceeded:
         return jsonify({"Error": "Network timed out. Please check internet connection."}), 504
     except Exception as e:
+        print(e)
         return jsonify({'error': str(e)}), 500

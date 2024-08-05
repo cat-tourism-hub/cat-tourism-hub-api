@@ -25,3 +25,5 @@ SERVICES = 'services'
 HOTEL_RESTAURANT = 'Hotel & Restaurants'
 ACCOMMODATION = 'Accommodations'
 CAR_RENTAL = 'Vehicle Rentals'
+
+SUCCESS = 'SUCCESS'
