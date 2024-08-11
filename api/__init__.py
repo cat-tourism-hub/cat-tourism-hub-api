@@ -11,10 +11,10 @@ def create_app():
 
     app.config.from_object(Config)
 
-    from website.views import views
+    from api.views import views
 
-    from website.business import business
-    from website.dot import dot
+    from api.business import business
+    from api.dot import dot
 
     app.register_blueprint(views, url_prefix='/')
     app.register_blueprint(business, url_prefix='/business')
