@@ -14,13 +14,19 @@ def index():
         partners_ref = db.collection(
             PARTNERS).where(filter=FieldFilter("estb.status", "==", "Pending"))
         partners = partners_ref.get()
-        partners_list = [partner.to_dict() for partner in partners]
+
+        partners_list = []
+        for partner in partners:
+            partner_dict = partner.to_dict()
+            partner_dict['id'] = partner.id
+            partners_list.append(partner_dict)
+
         return partners_list
     except Exception as e:
         print(e)
         return jsonify({'Error': str(e)}), 500
 
 
-@views.route('/add_to_order', methods=['POST'])
-def add_to_order():
+@views.route('/add-to-order/<itemId>', methods=['POST'])
+def add_to_order(item_id):
     pass
