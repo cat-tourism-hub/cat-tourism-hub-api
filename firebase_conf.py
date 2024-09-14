@@ -8,8 +8,8 @@ from google.cloud import storage
 # Use /etc/secrets/<filename> on server
 # Use ./tourism-hub.json on local
 
-cred = credentials.Certificate('./tourism-hub.json')
+cred = credentials.Certificate('/etc/secrets/fb_key')
 firebase_admin.initialize_app(cred)
 admin_firestore = firestore.client()
 storage_client = storage.Client.from_service_account_json(
-    './tourism-hub.json')
+    '/etc/secrets/fb_key')
